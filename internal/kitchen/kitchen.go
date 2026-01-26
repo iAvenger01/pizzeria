@@ -30,10 +30,10 @@ func New() *Kitchen {
 		"bbq":         {Name: "Барбекю", Cost: 690.0, AssemblingTime: 4, CookingTime: 15},
 	}
 
-	var m map[string]menu.Item
+	m := Menu{List: map[string]menu.Item{}}
 
 	for key, item := range list {
-		m[key] = item
+		m.List[key] = &item
 	}
 
 	k := &Kitchen{
@@ -67,7 +67,7 @@ func (c *Cook) Work(ctx context.Context) {
 		case order := <-c.Kitchen.InChan:
 			wg := sync.WaitGroup{}
 			wg.Add(len(order.Products))
-			for _, _ = range order.Products {
+			for range order.Products {
 				//originalPizza := c.Kitchen.Menu.List[productKey]
 				//fmt.Printf("Повар [\"%s\"] Готовит :%s\n", c.Name, originalPizza.Name)
 				//originalPizza.Assembling()

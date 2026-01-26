@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/mikhail-bigun/fiberlogrus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
+	"pizzeria/internal/config"
 	"pizzeria/internal/kitchen"
-	"pizzeria/internal/model"
+	"pizzeria/internal/orders"
 	"pizzeria/pkg/logging"
 )
 
@@ -16,15 +18,19 @@ func main() {
 	logger := logging.GetLogger()
 	logger.Println("Logger initialized")
 
-	ctx := context.Background()
+	cfg, err := config.New()
+	if err != nil {
+		logger.Fatalln(err)
+	}
+	logger.Println("Configuration initialized")
 
-	k := kitchen.New()
-	k.Work(ctx)
+	ctx := context.Background()
 
 	http.Handle("/metrics", promhttp.Handler())
 
 	app := fiber.New(fiber.Config{
 		ServerHeader: "Fiber",
+		AppName:      cfg.App.Name,
 	})
 	app.Use(
 		fiberlogrus.New(
@@ -39,27 +45,24 @@ func main() {
 					fiberlogrus.TagRoute,
 					fiberlogrus.TagPath,
 					// add value from locals
-					fiberlogrus.AttachKeyTag(fiberlogrus.TagReqHeader, "requestid"),
+					fiberlogrus.AttachKeyTag(fiberlogrus.TagReqHeader, "Request-Id"),
 				},
 			},
 		),
 	)
 
+	api := app.Group("/api/v1")
+
+	k := kitchen.New()
+	k.Work(ctx)
+	orderService, _ := orders.NewService(logger, k)
+	orderHandler := orders.Handler{Logger: logger, OrderService: orderService}
+	orderHandler.Register(api)
+
 	app.Get("/menu", func(c *fiber.Ctx) error {
 		return c.JSON(k.Menu.List)
 	})
 
-	app.Post("/orders", func(c *fiber.Ctx) error {
-		order := model.Order{}
-		err := c.BodyParser(&order)
-		if err != nil {
-			logger.Error(err)
-		}
-		k.InChan <- order
-
-		return c.Status(fiber.StatusCreated).JSON(order)
-	})
-
-	app.ListenTLS("pizzeria.local:8080", "./certs/cert.pem", "./certs/key.pem")
+	logger.Fatal(app.ListenTLS(fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.Port), "./certs/cert.pem", "./certs/key.pem"))
 
 }

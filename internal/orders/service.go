@@ -8,7 +8,7 @@ import (
 
 type service struct {
 	logger  logging.Logger
-	kitchen kitchen.Kitchen
+	kitchen *kitchen.Kitchen
 }
 
 type Service interface {
@@ -17,7 +17,7 @@ type Service interface {
 
 var _ Service = &service{}
 
-func NewService(logger logging.Logger, kitchen kitchen.Kitchen) (Service, error) {
+func NewService(logger logging.Logger, kitchen *kitchen.Kitchen) (Service, error) {
 	return &service{
 		logger:  logger,
 		kitchen: kitchen,

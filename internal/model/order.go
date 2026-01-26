@@ -10,6 +10,6 @@ type OrderDTO struct {
 }
 
 type Order struct {
-	Address  int            `json:"address"`
-	Products []menu.Product `json:"products"`
+	Address  int         `json:"address"`
+	Products []menu.Item `json:"products"`
 }
