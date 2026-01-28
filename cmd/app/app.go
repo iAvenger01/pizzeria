@@ -66,8 +66,12 @@ func main() {
 	orderHandler := orders.Handler{Logger: logger, OrderService: orderService}
 	orderHandler.Register(api)
 
-	app.Get("/menu", func(c *fiber.Ctx) error {
+	api.Get("/menu", func(c *fiber.Ctx) error {
 		return c.JSON(kitchen.Menu.List)
+	})
+
+	api.Get("/cooks", func(c *fiber.Ctx) error {
+		return c.JSON(kitchen.Cooks)
 	})
 
 	http.Handle("/metrics", promhttp.Handler())

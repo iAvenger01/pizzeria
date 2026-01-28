@@ -54,11 +54,11 @@ func (o *Orders) Remove(id uuid.UUID) (bool, error) {
 }
 
 type Kitchen struct {
-	Menu   Menu
-	Orders Orders
-	Cooks  []Cook
-
-	InChan  chan *model.Order
+	Queue   *Queue
+	Menu    Menu
+	Orders  Orders
+	Cooks   []Cook
+	inChan  chan *model.Order // Используем только для передачи заказа в горутины, данные "ждут" в очереди, поэтому они небуферизированные
 	OutChan chan *model.Order
 }
 
@@ -76,9 +76,10 @@ func New() *Kitchen {
 
 	k := &Kitchen{
 		Orders:  Orders{list: make(map[uuid.UUID]*model.Order), mu: sync.RWMutex{}},
+		Queue:   NewQueue(50),
 		Menu:    m,
 		Cooks:   []Cook{},
-		InChan:  make(chan *model.Order, 10),
+		inChan:  make(chan *model.Order),
 		OutChan: make(chan *model.Order, 10),
 	}
 
@@ -88,13 +89,20 @@ func New() *Kitchen {
 }
 
 func (k *Kitchen) Work(ctx context.Context) {
+	go func() { // Поставляем горутинам (работникам) заказы в каналы из очереди
+		for k.Queue.Len() > 0 && !k.Queue.Closed() {
+			order, _ := k.Queue.Dequeue()
+			k.inChan <- order
+		}
+		return
+	}()
 	for _, cook := range k.Cooks {
 		go cook.Work(ctx)
 	}
 }
 
 type Cook struct {
-	Name    string
+	Name    string `json:"name"`
 	Kitchen *Kitchen
 }
 
@@ -103,7 +111,7 @@ func (c *Cook) Work(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case order := <-c.Kitchen.InChan:
+		case order := <-c.Kitchen.inChan:
 			wg := sync.WaitGroup{}
 			for _, product := range order.Products {
 				wg.Add(int(product.Quantity))
@@ -117,6 +125,7 @@ func (c *Cook) Work(ctx context.Context) {
 				}
 			}
 
+			order.Status = "cooked"
 			wg.Wait()
 		}
 	}

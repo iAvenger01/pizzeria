@@ -48,17 +48,23 @@ func (d *db) Create(ctx context.Context, orderDTO model.OrderDTO) (uuid.UUID, er
 		return uuid.UUID{}, err
 	}
 
-	rows := [][]any{}
+	var rows [][]any
 	for product, quantity := range orderDTO.Products {
 		rows = append(rows, []any{id, product, quantity})
 	}
 
-	tx.CopyFrom(
+	_, err = tx.CopyFrom(
 		ctx,
 		pgx.Identifier{"order_item"},
 		[]string{"order_id", "menu_item_id", "quantity"},
 		pgx.CopyFromRows(rows),
 	)
+
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return uuid.UUID{}, err
+	}
+
 	_ = tx.Commit(ctx)
 
 	return id, nil
@@ -98,11 +104,6 @@ func (d *db) FindOne(ctx context.Context, id uuid.UUID) (model.Order, error) {
 }
 
 func (d *db) Update(ctx context.Context, order model.OrderDTO) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *db) Delete(ctx context.Context, id uuid.UUID) error {
 	//TODO implement me
 	panic("implement me")
 }
