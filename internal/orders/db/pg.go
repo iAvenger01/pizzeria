@@ -85,7 +85,7 @@ func (d *db) FindOne(ctx context.Context, id uuid.UUID) (model.Order, error) {
 	}
 	defer rows.Close()
 
-	products, err := pgx.CollectRows(rows, pgx.RowToStructByName[menu.Product])
+	products, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[menu.Product])
 	if err != nil {
 		d.logger.Error(constants.ErrToParseOrderInStruct, err)
 		return order, fmt.Errorf("%s: %v", constants.ErrToParseOrderInStruct, err)

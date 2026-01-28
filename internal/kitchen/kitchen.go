@@ -2,45 +2,84 @@ package kitchen
 
 import (
 	"context"
+	"fmt"
+	"github.com/google/uuid"
 	"pizzeria/internal/kitchen/menu"
 	"pizzeria/internal/model"
 	"sync"
 )
 
 type Menu struct {
-	List map[string]menu.Item `json:"list"`
+	List map[int]menu.Product
+}
+
+type Orders struct {
+	mu   sync.RWMutex
+	list map[uuid.UUID]*model.Order
+}
+
+func (o *Orders) Get(id uuid.UUID) (*model.Order, bool) {
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+
+	order, ok := o.list[id]
+
+	return order, ok
+}
+
+func (o *Orders) Add(order *model.Order) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	o.list[order.Id] = order
+
+	_, ok := o.list[order.Id]
+	if !ok {
+		return fmt.Errorf("order not saved")
+	}
+	return nil
+}
+
+func (o *Orders) Remove(id uuid.UUID) (bool, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	delete(o.list, id)
+
+	_, ok := o.list[id]
+	if !ok {
+		return false, fmt.Errorf("order not removed")
+	}
+	return true, nil
 }
 
 type Kitchen struct {
-	Menu    Menu
-	Cooks   []Cook
-	InChan  chan model.Order
-	OutChan chan model.Order
+	Menu   Menu
+	Orders Orders
+	Cooks  []Cook
+
+	InChan  chan *model.Order
+	OutChan chan *model.Order
 }
 
 func New() *Kitchen {
-	list := map[string]menu.Pizza{
-		"four_cheese": {Name: "4 сыра", Cost: 390.0, CookingTime: 2, AssemblingTime: 15},
-		"pepperoni":   {Name: "Пепперони", Cost: 589.0, AssemblingTime: 2, CookingTime: 15},
-		"diablo":      {Name: "Дъябло", Cost: 539.0, AssemblingTime: 5, CookingTime: 15},
-		"hawaiian":    {Name: "Гавайская", Cost: 480.0, AssemblingTime: 4, CookingTime: 15},
-		"ninja":       {Name: "Ниндзя", Cost: 580.0, AssemblingTime: 4, CookingTime: 15},
-		"margarita":   {Name: "Маргарита", Cost: 350.0, AssemblingTime: 3, CookingTime: 15},
-		"spicy":       {Name: "Пикантная", Cost: 650.0, AssemblingTime: 5, CookingTime: 15},
-		"bbq":         {Name: "Барбекю", Cost: 690.0, AssemblingTime: 4, CookingTime: 15},
-	}
-
-	m := Menu{List: map[string]menu.Item{}}
-
-	for key, item := range list {
-		m.List[key] = &item
-	}
+	m := Menu{List: map[int]menu.Product{
+		1: {Name: "4 сыра", Price: 390.0, AssemblingTime: intPtr(2), CookingTime: 15},
+		2: {Name: "Пепперони", Price: 589.0, AssemblingTime: intPtr(2), CookingTime: 15},
+		3: {Name: "Дъябло", Price: 539.0, AssemblingTime: intPtr(5), CookingTime: 15},
+		4: {Name: "Гавайская", Price: 480.0, AssemblingTime: intPtr(4), CookingTime: 15},
+		5: {Name: "Ниндзя", Price: 580.0, AssemblingTime: intPtr(4), CookingTime: 15},
+		6: {Name: "Маргарита", Price: 350.0, AssemblingTime: intPtr(3), CookingTime: 15},
+		7: {Name: "Пикантная", Price: 650.0, AssemblingTime: intPtr(5), CookingTime: 15},
+		8: {Name: "Барбекю", Price: 690.0, AssemblingTime: intPtr(4), CookingTime: 15},
+	}}
 
 	k := &Kitchen{
+		Orders:  Orders{list: make(map[uuid.UUID]*model.Order), mu: sync.RWMutex{}},
 		Menu:    m,
 		Cooks:   []Cook{},
-		InChan:  make(chan model.Order, 10),
-		OutChan: make(chan model.Order, 10),
+		InChan:  make(chan *model.Order, 10),
+		OutChan: make(chan *model.Order, 10),
 	}
 
 	k.Cooks = append(k.Cooks, Cook{Name: "Андрей", Kitchen: k})
@@ -66,18 +105,23 @@ func (c *Cook) Work(ctx context.Context) {
 			return
 		case order := <-c.Kitchen.InChan:
 			wg := sync.WaitGroup{}
-			wg.Add(len(order.Products))
-			for range order.Products {
-				//originalPizza := c.Kitchen.Menu.List[productKey]
-				//fmt.Printf("Повар [\"%s\"] Готовит :%s\n", c.Name, originalPizza.Name)
-				//originalPizza.Assembling()
-				go func() {
-					defer wg.Done()
-					//originalPizza.Cook()
-				}()
+			for _, product := range order.Products {
+				wg.Add(int(product.Quantity))
+				for i := int8(1); i <= product.Quantity; i++ {
+					fmt.Printf("Повар [\"%s\"] Готовит :%s #%d\n", c.Name, product.Name, i)
+					product.Assembling()
+					go func() {
+						defer wg.Done()
+						product.Cooking()
+					}()
+				}
 			}
 
 			wg.Wait()
 		}
 	}
+}
+
+func intPtr(v int) *int {
+	return &v
 }

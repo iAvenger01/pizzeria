@@ -9,8 +9,8 @@ type Item interface {
 	Cooking() (bool, error)
 }
 type Product struct {
-	Status         string  `json:"status" db:"-"`
 	Key            string  `json:"key" db:"key"`
+	Status         string  `json:"status" db:"status"`
 	Name           string  `json:"name" db:"name"`
 	Price          float64 `json:"price" db:"price"`
 	Quantity       int8    `json:"quantity" db:"quantity"`
@@ -19,7 +19,7 @@ type Product struct {
 }
 
 func (p *Product) Assembling() (bool, error) {
-	if p.AssemblingTime != nil {
+	if p.AssemblingTime == nil {
 		return false, fmt.Errorf("assembling time not implemented")
 	}
 	time.Sleep(time.Second * time.Duration(*p.AssemblingTime))

@@ -8,25 +8,31 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"pizzeria/internal/config"
-	"pizzeria/internal/kitchen"
+	kitchenPkg "pizzeria/internal/kitchen"
 	"pizzeria/internal/orders"
+	"pizzeria/internal/orders/db"
+	pg "pizzeria/pkg/db"
 	"pizzeria/pkg/logging"
 )
 
 func main() {
 	logging.Init()
 	logger := logging.GetLogger()
-	logger.Println("Logger initialized")
+	logger.Debugln("Logger initialized")
 
 	cfg, err := config.New()
 	if err != nil {
 		logger.Fatalln(err)
 	}
-	logger.Println("Configuration initialized")
+	logger.Debugln("Configuration initialized")
 
 	ctx := context.Background()
 
-	http.Handle("/metrics", promhttp.Handler())
+	pgx, err := pg.New(ctx, cfg)
+	if err != nil {
+		logger.Fatalln(err)
+	}
+	logger.Debugln("Database initialized")
 
 	app := fiber.New(fiber.Config{
 		ServerHeader: "Fiber",
@@ -53,16 +59,18 @@ func main() {
 
 	api := app.Group("/api/v1")
 
-	k := kitchen.New()
-	k.Work(ctx)
-	orderService, _ := orders.NewService(logger, k)
+	kitchen := kitchenPkg.New()
+	kitchen.Work(ctx)
+	orderStorage := db.New(logger, pgx)
+	orderService, _ := orders.NewService(logger, orderStorage, kitchen)
 	orderHandler := orders.Handler{Logger: logger, OrderService: orderService}
 	orderHandler.Register(api)
 
 	app.Get("/menu", func(c *fiber.Ctx) error {
-		return c.JSON(k.Menu.List)
+		return c.JSON(kitchen.Menu.List)
 	})
 
-	logger.Fatal(app.ListenTLS(fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.Port), "./certs/cert.pem", "./certs/key.pem"))
+	http.Handle("/metrics", promhttp.Handler())
 
+	logger.Fatal(app.ListenTLS(fmt.Sprintf("%s:%d", cfg.App.Host, cfg.App.Port), "./certs/cert.pem", "./certs/key.pem"))
 }
