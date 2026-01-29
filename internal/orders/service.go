@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"pizzeria/internal/kitchen"
 	"pizzeria/internal/model"
+	"pizzeria/internal/queue"
 	"pizzeria/pkg/logging"
 )
 
@@ -47,13 +48,13 @@ func (s *service) Create(ctx context.Context, dto model.OrderDTO) (model.Order, 
 
 	err = s.kitchen.Queue.Enqueue(order)
 	if err != nil {
-		if errors.Is(err, kitchen.ErrQueueClosed) {
+		if errors.Is(err, queue.ErrQueueClosed) {
 			return model.Order{}, fmt.Errorf("kitchen is already closed")
 		}
 	}
 	s.logger.Debug("Sent new order to queue")
 
-	err = s.kitchen.Orders.Add(order)
+	err = s.kitchen.Board.Add(order)
 	if err != nil {
 		s.logger.Error("Error adding order to kitchen", err)
 		return model.Order{}, err
@@ -64,7 +65,7 @@ func (s *service) Create(ctx context.Context, dto model.OrderDTO) (model.Order, 
 }
 
 func (s *service) Get(ctx context.Context, id uuid.UUID) (model.Order, error) {
-	order, ok := s.kitchen.Orders.Get(id)
+	order, ok := s.kitchen.Board.Get(id)
 	if ok {
 		s.logger.Debug("Got order from kitchen", id.String())
 		return *order, nil

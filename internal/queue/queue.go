@@ -1,4 +1,4 @@
-package kitchen
+package queue
 
 import (
 	"errors"
@@ -25,7 +25,7 @@ func NewQueue(initCap int) *Queue {
 		panic(ErrQueueCapacityNotPositive)
 	}
 	q := &Queue{
-		items: make([]*model.Order, 0, initCap),
+		items: make([]*model.Order, initCap),
 		cap:   initCap,
 	}
 	q.cond = sync.NewCond(&q.mu)

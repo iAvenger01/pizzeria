@@ -14,8 +14,12 @@ const (
 )
 
 type Handler struct {
-	Logger       logging.Logger
-	OrderService Service
+	logger       logging.Logger
+	orderService Service
+}
+
+func NewHandler(logger logging.Logger, orderService Service) Handler {
+	return Handler{logger: logger, orderService: orderService}
 }
 
 func (h *Handler) Register(router fiber.Router) {
@@ -24,9 +28,10 @@ func (h *Handler) Register(router fiber.Router) {
 }
 
 func (h *Handler) getOrder(c *fiber.Ctx) error {
-	order, err := h.OrderService.GetOrder(c.Context(), uuid.MustParse(c.Params("uuid")))
+	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
+	order, err := h.orderService.Get(c.Context(), uuid.MustParse(c.Params("uuid")))
 	if err != nil {
-		h.Logger.Error("Failed to get order", err)
+		h.logger.Error("Failed to get order", err)
 	}
 	return c.Status(200).JSON(order)
 }
@@ -36,11 +41,11 @@ func (h *Handler) createOrder(c *fiber.Ctx) error {
 	dto := model.OrderDTO{}
 	err := c.BodyParser(&dto)
 	if err != nil {
-		h.Logger.Error(err)
+		h.logger.Error(err)
 	}
-	order, err := h.OrderService.CreateOrder(c.Context(), dto)
+	order, err := h.orderService.Create(c.Context(), dto)
 	if err != nil {
-		h.Logger.Error(err)
+		h.logger.Error(err)
 		return c.Status(500).SendString("Whoops, something went wrong")
 	}
 	c.Set(fiber.HeaderLocation, fmt.Sprintf("%s://%sapi/v1/%s/%s", c.Protocol(), c.Hostname(), ordersURL, order.Id.String()))

@@ -7,7 +7,9 @@ import (
 	"github.com/mikhail-bigun/fiberlogrus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
+	boardPkg "pizzeria/internal/board"
 	"pizzeria/internal/config"
+	deliveryPkg "pizzeria/internal/delivery"
 	kitchenPkg "pizzeria/internal/kitchen"
 	"pizzeria/internal/orders"
 	"pizzeria/internal/orders/db"
@@ -59,20 +61,20 @@ func main() {
 
 	api := app.Group("/api/v1")
 
-	kitchen := kitchenPkg.New()
+	board := boardPkg.New()
+	kitchen := kitchenPkg.New(board)
 	kitchen.Work(ctx)
+
+	delivery := deliveryPkg.New(board)
+	delivery.Work(ctx)
+
 	orderStorage := db.New(logger, pgx)
 	orderService, _ := orders.NewService(logger, orderStorage, kitchen)
-	orderHandler := orders.Handler{Logger: logger, OrderService: orderService}
+	orderHandler := orders.NewHandler(logger, orderService)
 	orderHandler.Register(api)
 
-	api.Get("/menu", func(c *fiber.Ctx) error {
-		return c.JSON(kitchen.Menu.List)
-	})
-
-	api.Get("/cooks", func(c *fiber.Ctx) error {
-		return c.JSON(kitchen.Cooks)
-	})
+	kitchenHandler := kitchenPkg.NewHandler(logger, kitchen)
+	kitchenHandler.Register(api)
 
 	http.Handle("/metrics", promhttp.Handler())
 
