@@ -18,23 +18,23 @@ import (
 )
 
 func main() {
-	logging.Init()
-	logger := logging.GetLogger()
-	logger.Debugln("Logger initialized")
+
+	logger := logging.New()
+	logger.Debug("Logger initialized")
 
 	cfg, err := config.New()
 	if err != nil {
 		logger.Fatalln(err)
 	}
-	logger.Debugln("Configuration initialized")
+	logger.Debug("Configuration initialized")
 
 	ctx := context.Background()
 
 	pgx, err := pg.New(ctx, cfg)
 	if err != nil {
-		logger.Fatalln(err)
+		logger.Fatal(err)
 	}
-	logger.Debugln("Database initialized")
+	logger.Debug("Database initialized")
 
 	app := fiber.New(fiber.Config{
 		ServerHeader: "Fiber",

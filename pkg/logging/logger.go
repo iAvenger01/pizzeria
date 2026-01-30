@@ -6,13 +6,11 @@ import (
 	"os"
 )
 
-var e *logrus.Entry
-
 type Logger struct {
 	*logrus.Entry
 }
 
-func Init() {
+func New() *Logger {
 	l := logrus.New()
 	l.SetFormatter(&logrus.TextFormatter{})
 	l.SetOutput(os.Stdout)
@@ -25,9 +23,5 @@ func Init() {
 		l.SetLevel(logrus.DebugLevel)
 	}
 
-	e = logrus.NewEntry(l)
-}
-
-func GetLogger() Logger {
-	return Logger{e}
+	return &Logger{logrus.NewEntry(l)}
 }

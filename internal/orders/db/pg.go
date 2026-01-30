@@ -26,11 +26,11 @@ const (
 var _ orders.Storage = &db{}
 
 type db struct {
-	logger logging.Logger
+	logger *logging.Logger
 	pool   *pgxpool.Pool
 }
 
-func New(logger logging.Logger, pool *pgxpool.Pool) orders.Storage {
+func New(logger *logging.Logger, pool *pgxpool.Pool) orders.Storage {
 	return &db{logger: logger, pool: pool}
 }
 

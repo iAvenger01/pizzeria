@@ -14,11 +14,11 @@ const (
 )
 
 type Handler struct {
-	logger       logging.Logger
+	logger       *logging.Logger
 	orderService Service
 }
 
-func NewHandler(logger logging.Logger, orderService Service) Handler {
+func NewHandler(logger *logging.Logger, orderService Service) Handler {
 	return Handler{logger: logger, orderService: orderService}
 }
 

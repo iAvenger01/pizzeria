@@ -10,11 +10,11 @@ const (
 )
 
 type Handler struct {
-	logger  logging.Logger
+	logger  *logging.Logger
 	kitchen *Kitchen // TODO Заменить на сервис/прослойку для управления кухней не в хандлере
 }
 
-func NewHandler(logger logging.Logger, kitchen *Kitchen) Handler {
+func NewHandler(logger *logging.Logger, kitchen *Kitchen) Handler {
 	return Handler{logger: logger, kitchen: kitchen}
 }
 
