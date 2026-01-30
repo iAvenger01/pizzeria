@@ -27,18 +27,18 @@ func (h *Handler) Register(router fiber.Router) {
 
 func (h *Handler) getMenu(c *fiber.Ctx) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
-	h.logger.Debugln("Get menu from kitchen handler")
+	h.logger.Debug("Get menu from kitchen handler")
 	return c.Status(200).JSON(h.kitchen.Menu.List)
 }
 
 func (h *Handler) getCooks(c *fiber.Ctx) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
-	h.logger.Debugln("Get cooks from kitchen handler")
+	h.logger.Debug("Get cooks from kitchen handler")
 	return c.Status(200).JSON(h.kitchen.Cooks)
 }
 
 func (h *Handler) getOrders(c *fiber.Ctx) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
-	h.logger.Debugln("Get orders from kitchen handler")
+	h.logger.Debug("Get orders from kitchen handler")
 	return c.Status(200).JSON(h.kitchen.Board.List())
 }

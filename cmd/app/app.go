@@ -62,7 +62,7 @@ func main() {
 	api := app.Group("/api/v1")
 
 	board := boardPkg.New()
-	kitchen := kitchenPkg.New(board)
+	kitchen := kitchenPkg.New(logger, board)
 	kitchen.Work(ctx)
 
 	delivery := deliveryPkg.New(board)

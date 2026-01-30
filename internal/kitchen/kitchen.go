@@ -2,12 +2,11 @@ package kitchen
 
 import (
 	"context"
-	"fmt"
 	"pizzeria/internal/board"
 	"pizzeria/internal/kitchen/menu"
 	"pizzeria/internal/model"
 	"pizzeria/internal/queue"
-	"sync"
+	"pizzeria/pkg/logging"
 )
 
 type Menu struct {
@@ -15,6 +14,7 @@ type Menu struct {
 }
 
 type Kitchen struct {
+	logger *logging.Logger
 	Queue  *queue.Queue
 	Menu   Menu
 	Board  *board.Board
@@ -22,7 +22,7 @@ type Kitchen struct {
 	inChan chan *model.Order // Используем только для передачи заказа в горутины, данные "ждут" в очереди, поэтому они небуферизированные
 }
 
-func New(board *board.Board) *Kitchen {
+func New(logger *logging.Logger, board *board.Board) *Kitchen {
 	m := Menu{List: map[int]menu.Product{
 		1: {Name: "4 сыра", Price: 390.0, AssemblingTime: intPtr(2), CookingTime: 15},
 		2: {Name: "Пепперони", Price: 589.0, AssemblingTime: intPtr(2), CookingTime: 15},
@@ -35,6 +35,7 @@ func New(board *board.Board) *Kitchen {
 	}}
 
 	k := &Kitchen{
+		logger: logger,
 		Board:  board,
 		Queue:  queue.NewQueue(50),
 		Menu:   m,
@@ -57,37 +58,6 @@ func (k *Kitchen) Work(ctx context.Context) {
 	}()
 	for _, cook := range k.Cooks {
 		go cook.Work(ctx)
-	}
-}
-
-type Cook struct {
-	Name    string `json:"name"`
-	kitchen *Kitchen
-}
-
-func (c *Cook) Work(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case order := <-c.kitchen.inChan:
-			order.Status = "cooking"
-			wg := sync.WaitGroup{}
-			for _, product := range order.Products {
-				wg.Add(int(product.Quantity))
-				for i := int8(1); i <= product.Quantity; i++ {
-					fmt.Printf("Повар [%s] Готовит :%s #%d\n", c.Name, product.Name, i)
-					product.Assembling()
-					go func() {
-						defer wg.Done()
-						product.Cooking()
-					}()
-				}
-			}
-
-			wg.Wait()
-			order.Status = "cooked"
-		}
 	}
 }
 

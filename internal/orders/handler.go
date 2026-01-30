@@ -31,7 +31,9 @@ func (h *Handler) getOrder(c *fiber.Ctx) error {
 	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
 	order, err := h.orderService.Get(c.Context(), uuid.MustParse(c.Params("uuid")))
 	if err != nil {
-		h.logger.Error("Failed to get order", err)
+		h.logger.Error(fmt.Sprintf("failed to get order: %v", err))
+
+		return c.Status(500).SendString("Whoops, something went wrong")
 	}
 	return c.Status(200).JSON(order)
 }
@@ -41,11 +43,12 @@ func (h *Handler) createOrder(c *fiber.Ctx) error {
 	dto := model.OrderDTO{}
 	err := c.BodyParser(&dto)
 	if err != nil {
-		h.logger.Error(err)
+		h.logger.Error(fmt.Sprintf("failed to parse request body: %v", err))
+		return c.Status(400).SendString("Request body could not be parsed")
 	}
 	order, err := h.orderService.Create(c.Context(), dto)
 	if err != nil {
-		h.logger.Error(err)
+		h.logger.Error(fmt.Sprintf("failed create order: %v", err))
 		return c.Status(500).SendString("Whoops, something went wrong")
 	}
 	c.Set(fiber.HeaderLocation, fmt.Sprintf("%s://%sapi/v1/%s/%s", c.Protocol(), c.Hostname(), ordersURL, order.Id.String()))

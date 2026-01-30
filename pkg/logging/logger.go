@@ -12,7 +12,7 @@ type Logger struct {
 
 func New() *Logger {
 	l := logrus.New()
-	l.SetFormatter(&logrus.TextFormatter{})
+	l.SetFormatter(&logrus.JSONFormatter{})
 	l.SetOutput(os.Stdout)
 
 	l.SetLevel(logrus.InfoLevel)

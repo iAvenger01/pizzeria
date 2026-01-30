@@ -1,6 +1,9 @@
 package constants
 
 const (
-	ErrToGetOrder           = "Failed to get order"
-	ErrToParseOrderInStruct = "Failed to parse order in struct"
+	ErrToInsertOrder            = "failed to insert order"
+	ErrToGetOrder               = "failed to get order"
+	ErrToParseOrderInStruct     = "failed to parse order in struct"
+	ErrToGetOrderItem           = "failed to get order item"
+	ErrToParseOrderItemInStruct = "failed to parse order item in struct"
 )

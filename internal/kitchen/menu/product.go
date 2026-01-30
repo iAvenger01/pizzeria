@@ -9,6 +9,7 @@ type Item interface {
 	Cooking() (bool, error)
 }
 type Product struct {
+	Id             int     `json:"id" db:"id"`
 	Key            string  `json:"key" db:"key"`
 	Status         string  `json:"status" db:"status"`
 	Name           string  `json:"name" db:"name"`

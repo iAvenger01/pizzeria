@@ -38,14 +38,15 @@ func (d *db) Create(ctx context.Context, orderDTO model.OrderDTO) (uuid.UUID, er
 	tx, _ := d.pool.Begin(ctx)
 	id, err := uuid.NewV7()
 	if err != nil {
-		d.logger.Error("Error creating uuid: %v", err)
-		return uuid.UUID{}, fmt.Errorf("error creating uuid: %v", err)
+		d.logger.Error(fmt.Sprintf("error creating uuid: %v", err))
+		return uuid.UUID{}, fmt.Errorf("error creating uuid")
 	}
 	_, err = tx.Exec(ctx, insertOrderQuery, id, orderDTO.Address)
 
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		return uuid.UUID{}, err
+		d.logger.Error(fmt.Sprintf("%s: %v", constants.ErrToInsertOrder, err))
+		return uuid.UUID{}, fmt.Errorf(constants.ErrToInsertOrder)
 	}
 
 	var rows [][]any
@@ -76,25 +77,26 @@ func (d *db) FindOne(ctx context.Context, id uuid.UUID) (model.Order, error) {
 	rows, err := tx.Query(ctx, "SELECT id, address FROM orders WHERE id = $1", id)
 	if err != nil {
 		d.logger.Error(fmt.Sprintf("%s: %v", constants.ErrToGetOrder, err))
-		return model.Order{}, fmt.Errorf("%s: %v", constants.ErrToGetOrder, err)
+		return model.Order{}, fmt.Errorf(constants.ErrToGetOrder)
 	}
 	defer rows.Close()
 	order, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[model.Order])
 	if err != nil {
-		d.logger.Error(err.Error())
-		return order, fmt.Errorf("%s: %v", constants.ErrToParseOrderInStruct, err)
+		d.logger.Error(fmt.Sprintf("%s: %v", constants.ErrToParseOrderInStruct, err))
+		return order, fmt.Errorf(constants.ErrToParseOrderInStruct)
 	}
 
 	rows, err = tx.Query(ctx, getOrderItemsQuery, id)
 	if err != nil {
-		return order, err
+		d.logger.Error(fmt.Sprintf("%s: %v", constants.ErrToGetOrderItem, err))
+		return order, fmt.Errorf(constants.ErrToGetOrderItem)
 	}
 	defer rows.Close()
 
 	products, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[menu.Product])
 	if err != nil {
-		d.logger.Error(constants.ErrToParseOrderInStruct, err)
-		return order, fmt.Errorf("%s: %v", constants.ErrToParseOrderInStruct, err)
+		d.logger.Error(fmt.Sprintf("%s: %v", constants.ErrToParseOrderItemInStruct, err))
+		return order, fmt.Errorf(constants.ErrToParseOrderItemInStruct)
 	}
 	for _, product := range products {
 		order.Products = append(order.Products, product)
