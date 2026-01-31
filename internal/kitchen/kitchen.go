@@ -7,6 +7,7 @@ import (
 	"pizzeria/internal/model"
 	"pizzeria/internal/queue"
 	"pizzeria/pkg/logging"
+	"time"
 )
 
 type Menu struct {
@@ -14,6 +15,7 @@ type Menu struct {
 }
 
 type Kitchen struct {
+	db     Storage
 	logger *logging.Logger
 	Queue  *queue.Queue
 	Menu   Menu
@@ -22,19 +24,18 @@ type Kitchen struct {
 	inChan chan *model.Order // Используем только для передачи заказа в горутины, данные "ждут" в очереди, поэтому они небуферизированные
 }
 
-func New(logger *logging.Logger, board *board.Board) *Kitchen {
-	m := Menu{List: map[int]menu.Product{
-		1: {Name: "4 сыра", Price: 390.0, AssemblingTime: intPtr(2), CookingTime: 15},
-		2: {Name: "Пепперони", Price: 589.0, AssemblingTime: intPtr(2), CookingTime: 15},
-		3: {Name: "Дъябло", Price: 539.0, AssemblingTime: intPtr(5), CookingTime: 15},
-		4: {Name: "Гавайская", Price: 480.0, AssemblingTime: intPtr(4), CookingTime: 15},
-		5: {Name: "Ниндзя", Price: 580.0, AssemblingTime: intPtr(4), CookingTime: 15},
-		6: {Name: "Маргарита", Price: 350.0, AssemblingTime: intPtr(3), CookingTime: 15},
-		7: {Name: "Пикантная", Price: 650.0, AssemblingTime: intPtr(5), CookingTime: 15},
-		8: {Name: "Барбекю", Price: 690.0, AssemblingTime: intPtr(4), CookingTime: 15},
-	}}
+func New(logger *logging.Logger, db Storage, board *board.Board) *Kitchen {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(3))
+	defer cancel()
+
+	products, _ := db.GetMenu(ctx)
+	m := Menu{List: make(map[int]menu.Product)}
+	for _, product := range products {
+		m.List[product.Id] = product
+	}
 
 	k := &Kitchen{
+		db:     db,
 		logger: logger,
 		Board:  board,
 		Queue:  queue.NewQueue(50),
@@ -59,8 +60,4 @@ func (k *Kitchen) Work(ctx context.Context) {
 	for _, cook := range k.Cooks {
 		go cook.Work(ctx)
 	}
-}
-
-func intPtr(v int) *int {
-	return &v
 }

@@ -11,8 +11,9 @@ import (
 	"pizzeria/internal/config"
 	deliveryPkg "pizzeria/internal/delivery"
 	kitchenPkg "pizzeria/internal/kitchen"
+	kitchenDb "pizzeria/internal/kitchen/db"
 	"pizzeria/internal/orders"
-	"pizzeria/internal/orders/db"
+	orderDb "pizzeria/internal/orders/db"
 	pg "pizzeria/pkg/db"
 	"pizzeria/pkg/logging"
 )
@@ -62,13 +63,14 @@ func main() {
 	api := app.Group("/api/v1")
 
 	board := boardPkg.New()
-	kitchen := kitchenPkg.New(logger, board)
+	kitchenStorage := kitchenDb.New(logger, pgx)
+	kitchen := kitchenPkg.New(logger, kitchenStorage, board)
 	kitchen.Work(ctx)
 
 	delivery := deliveryPkg.New(board)
 	delivery.Work(ctx)
 
-	orderStorage := db.New(logger, pgx)
+	orderStorage := orderDb.New(logger, pgx)
 	orderService, _ := orders.NewService(logger, orderStorage, kitchen)
 	orderHandler := orders.NewHandler(logger, orderService)
 	orderHandler.Register(api)

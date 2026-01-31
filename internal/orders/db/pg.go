@@ -7,19 +7,22 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"pizzeria/internal/constants"
-	"pizzeria/internal/kitchen/menu"
 	"pizzeria/internal/model"
 	"pizzeria/internal/orders"
 	"pizzeria/pkg/logging"
 )
 
 const (
+	getOrderQuery = `
+		SELECT id, status, address FROM orders WHERE id = $1 LIMIT 1
+		`
+
 	getOrderItemsQuery = `
-		SELECT m.key, m.name, m.price, m.assembling_time, m.cooking_time, oi.quantity FROM order_item oi
-    	LEFT JOIN menu m ON oi.menu_item_id = m.id WHERE oi.order_id = $1 ORDER BY oi.order_id
+		SELECT p.id, oi.status, p.key, p.name, oi.price, p.assembling_time, p.cooking_time, oi.quantity FROM order_item oi
+    	LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1 ORDER BY oi.order_id
     `
 	insertOrderQuery = `
-		INSERT INTO orders (id, address) VALUES ($1, $2)
+		INSERT INTO orders (id, address, status) VALUES ($1, $2, $3)
 	`
 )
 
@@ -41,7 +44,7 @@ func (d *db) Create(ctx context.Context, orderDTO model.OrderDTO) (uuid.UUID, er
 		d.logger.Error(fmt.Sprintf("error creating uuid: %v", err))
 		return uuid.UUID{}, fmt.Errorf("error creating uuid")
 	}
-	_, err = tx.Exec(ctx, insertOrderQuery, id, orderDTO.Address)
+	_, err = tx.Exec(ctx, insertOrderQuery, id, orderDTO.Address, orderDTO.Status)
 
 	if err != nil {
 		_ = tx.Rollback(ctx)
@@ -51,17 +54,18 @@ func (d *db) Create(ctx context.Context, orderDTO model.OrderDTO) (uuid.UUID, er
 
 	var rows [][]any
 	for product, quantity := range orderDTO.Products {
-		rows = append(rows, []any{id, product, quantity})
+		rows = append(rows, []any{id, product, quantity, 0}) // TODO Придумать элегантный способ передать цену товара
 	}
 
 	_, err = tx.CopyFrom(
 		ctx,
 		pgx.Identifier{"order_item"},
-		[]string{"order_id", "menu_item_id", "quantity"},
+		[]string{"order_id", "product_id", "quantity", "price"},
 		pgx.CopyFromRows(rows),
 	)
 
 	if err != nil {
+		d.logger.Error(fmt.Sprintf("%s: %v", constants.ErrToInsertOrderItem, err))
 		_ = tx.Rollback(ctx)
 		return uuid.UUID{}, err
 	}
@@ -74,7 +78,7 @@ func (d *db) Create(ctx context.Context, orderDTO model.OrderDTO) (uuid.UUID, er
 func (d *db) FindOne(ctx context.Context, id uuid.UUID) (model.Order, error) {
 	tx, _ := d.pool.Begin(ctx)
 
-	rows, err := tx.Query(ctx, "SELECT id, address FROM orders WHERE id = $1", id)
+	rows, err := tx.Query(ctx, getOrderQuery, id)
 	if err != nil {
 		d.logger.Error(fmt.Sprintf("%s: %v", constants.ErrToGetOrder, err))
 		return model.Order{}, fmt.Errorf(constants.ErrToGetOrder)
@@ -93,7 +97,7 @@ func (d *db) FindOne(ctx context.Context, id uuid.UUID) (model.Order, error) {
 	}
 	defer rows.Close()
 
-	products, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[menu.Product])
+	products, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[model.OrderItem])
 	if err != nil {
 		d.logger.Error(fmt.Sprintf("%s: %v", constants.ErrToParseOrderItemInStruct, err))
 		return order, fmt.Errorf(constants.ErrToParseOrderItemInStruct)

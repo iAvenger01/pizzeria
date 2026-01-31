@@ -88,8 +88,6 @@ func (q *Queue) Cap() int {
 }
 
 func (q *Queue) Closed() bool {
-	q.mu.Lock()
-	defer q.mu.Unlock()
 	return q.closed
 }
 

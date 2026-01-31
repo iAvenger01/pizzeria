@@ -48,7 +48,6 @@ func (h *Handler) createOrder(c *fiber.Ctx) error {
 	}
 	order, err := h.orderService.Create(c.Context(), dto)
 	if err != nil {
-		h.logger.Error(fmt.Sprintf("failed create order: %v", err))
 		return c.Status(500).SendString("Whoops, something went wrong")
 	}
 	c.Set(fiber.HeaderLocation, fmt.Sprintf("%s://%sapi/v1/%s/%s", c.Protocol(), c.Hostname(), ordersURL, order.Id.String()))

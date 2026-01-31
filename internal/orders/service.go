@@ -33,6 +33,7 @@ func NewService(logger *logging.Logger, storage Storage, kitchen *kitchen.Kitche
 }
 
 func (s *service) Create(ctx context.Context, dto model.OrderDTO) (model.Order, error) {
+	dto.Status = "confirmed"
 	id, err := s.storage.Create(ctx, dto)
 	if err != nil {
 		return model.Order{}, err
@@ -41,9 +42,8 @@ func (s *service) Create(ctx context.Context, dto model.OrderDTO) (model.Order, 
 	order := &model.Order{Id: id, Address: dto.Address}
 
 	for menuItemId, quantity := range dto.Products {
-		product := s.kitchen.Menu.List[menuItemId]
-		product.Quantity = quantity
-		order.Products = append(order.Products, &product)
+		orderItem := &model.OrderItem{Status: dto.Status, Quantity: quantity, Product: s.kitchen.Menu.List[menuItemId]}
+		order.Products = append(order.Products, orderItem)
 	}
 
 	err = s.kitchen.Queue.Enqueue(order)

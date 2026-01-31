@@ -13,7 +13,7 @@ import (
 
 const (
 	getMenuQuery = `
-		SELECT id, key, name, price, assembling_time, cooking_time FROM menu
+		SELECT id, key, name, price, assembling_time, cooking_time FROM products
 	`
 )
 
