@@ -10,6 +10,7 @@ import (
 	boardPkg "pizzeria/internal/board"
 	"pizzeria/internal/config"
 	deliveryPkg "pizzeria/internal/delivery"
+	deliveryDb "pizzeria/internal/delivery/db"
 	kitchenPkg "pizzeria/internal/kitchen"
 	kitchenDb "pizzeria/internal/kitchen/db"
 	"pizzeria/internal/orders"
@@ -67,7 +68,8 @@ func main() {
 	kitchen := kitchenPkg.New(logger, kitchenStorage, board)
 	kitchen.Work(ctx)
 
-	delivery := deliveryPkg.New(board)
+	deliveryStorage := deliveryDb.New(logger, pgx)
+	delivery := deliveryPkg.New(logger, deliveryStorage, board)
 	delivery.Work(ctx)
 
 	orderStorage := orderDb.New(logger, pgx)

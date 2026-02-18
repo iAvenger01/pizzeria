@@ -59,7 +59,7 @@ func (s *service) Create(ctx context.Context, dto model.OrderDTO) (model.Order, 
 		s.logger.Error("Error adding order to kitchen", err)
 		return model.Order{}, err
 	}
-	s.logger.Info("Added new order to kitchen", order.Id.String())
+	s.logger.Info(fmt.Sprintf("[order][%s] added to kitchen", order.Id.String()))
 
 	return *order, nil
 }

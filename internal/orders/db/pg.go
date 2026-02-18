@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"pizzeria/internal/constants"
+	"pizzeria/internal/errors"
 	"pizzeria/internal/model"
 	"pizzeria/internal/orders"
 	"pizzeria/pkg/logging"
@@ -41,8 +42,7 @@ func (d *db) Create(ctx context.Context, orderDTO model.OrderDTO) (uuid.UUID, er
 	tx, _ := d.pool.Begin(ctx)
 	id, err := uuid.NewV7()
 	if err != nil {
-		d.logger.Error(fmt.Sprintf("error creating uuid: %v", err))
-		return uuid.UUID{}, fmt.Errorf("error creating uuid")
+		return uuid.UUID{}, errors.ErrToCreateUUID
 	}
 	_, err = tx.Exec(ctx, insertOrderQuery, id, orderDTO.Address, orderDTO.Status)
 
